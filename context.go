@@ -79,6 +79,7 @@ func (c *Context) WithPrecision(p uint32) *Context {
 }
 
 // goError converts flags into an error based on c.Traps.
+//
 //gcassert:inline
 func (c *Context) goError(flags Condition) (Condition, error) {
 	if flags == 0 {
@@ -95,6 +96,7 @@ func (c *Context) etiny() int32 {
 // shouldSetAsNaN determines whether setAsNaN should be called, given
 // the provided values, where x is required and y is optional. It is
 // split from setAsNaN to permit inlining of this function.
+//
 //gcassert:inline
 func (c *Context) shouldSetAsNaN(x, y *Decimal) bool {
 	return x.Form == NaNSignaling || x.Form == NaN ||
@@ -597,10 +599,10 @@ func (c *Context) Cbrt(d, x *Decimal) (Condition, error) {
 	// computation may only impact performance, not correctness.
 	var z0 Decimal
 	z0.Set(&z)
-	ed.Mul(&z, &z, decimalCbrtC1)
-	ed.Add(&z, &z, decimalCbrtC2)
+	ed.Mul(&z, &z, decimalCbrtC1())
+	ed.Add(&z, &z, decimalCbrtC2())
 	ed.Mul(&z, &z, &z0)
-	ed.Add(&z, &z, decimalCbrtC3)
+	ed.Add(&z, &z, decimalCbrtC3())
 
 	for ; exp8 < 0; exp8++ {
 		ed.Mul(&z, &z, decimalHalf)
@@ -738,7 +740,7 @@ func (c *Context) Ln(d, x *Decimal) (Condition, error) {
 		//   ln(10^expDelta) = expDelta * ln(10)
 		// to the result.
 		resAdjust.setCoefficient(int64(expDelta))
-		ed.Mul(&resAdjust, &resAdjust, decimalLn10.get(p))
+		ed.Mul(&resAdjust, &resAdjust, decimalLn10().get(p))
 
 		// tmp1 = z - 1
 		ed.Sub(&tmp1, &z, decimalOne)
@@ -862,7 +864,7 @@ func (c *Context) Log10(d, x *Decimal) (Condition, error) {
 	}
 	nc.Precision = c.Precision
 
-	qr, err := nc.Mul(d, &z, decimalInvLn10.get(c.Precision+2))
+	qr, err := nc.Mul(d, &z, decimalInvLn10().get(c.Precision+2))
 	if err != nil {
 		return 0, err
 	}

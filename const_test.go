@@ -17,7 +17,7 @@ package apd
 import "testing"
 
 func TestConstWithPrecision(t *testing.T) {
-	c := makeConstWithPrecision("123.456789")
+	c := makeConstWithPrecision("123.456789")()
 	expected := []string{
 		"1E+2",           // 0
 		"1E+2",           // 1

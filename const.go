@@ -14,7 +14,10 @@
 
 package apd
 
-import "math"
+import (
+	"math"
+	"sync"
+)
 
 var (
 	bigOne  = NewBigInt(1)
@@ -43,13 +46,15 @@ var (
 	decimalInvLn10 = makeConstWithPrecision(strInvLn10)
 )
 
-func makeConst(strVal string) *Decimal {
-	d := &Decimal{}
-	_, _, err := d.SetString(strVal)
-	if err != nil {
-		panic(err)
-	}
-	return d
+func makeConst(strVal string) func() *Decimal {
+	return sync.OnceValue(func() *Decimal {
+		d := &Decimal{}
+		_, _, err := d.SetString(strVal)
+		if err != nil {
+			panic(err)
+		}
+		return d
+	})
 }
 
 // constWithPrecision implements a look-up table for a constant, rounded-down to
@@ -60,30 +65,32 @@ type constWithPrecision struct {
 	vals      []Decimal
 }
 
-func makeConstWithPrecision(strVal string) *constWithPrecision {
-	c := &constWithPrecision{}
-	if _, _, err := c.unrounded.SetString(strVal); err != nil {
-		panic(err)
-	}
-	// The length of the string might be one higher than the available precision
-	// (because of the decimal point), but that's ok.
-	maxPrec := uint32(len(strVal))
-	for p := uint32(1); p < maxPrec; p *= 2 {
-		var d Decimal
-
-		ctx := Context{
-			Precision:   p,
-			Rounding:    RoundHalfUp,
-			MaxExponent: MaxExponent,
-			MinExponent: MinExponent,
-		}
-		_, err := ctx.Round(&d, &c.unrounded)
-		if err != nil {
+func makeConstWithPrecision(strVal string) func() *constWithPrecision {
+	return sync.OnceValue(func() *constWithPrecision {
+		c := &constWithPrecision{}
+		if _, _, err := c.unrounded.SetString(strVal); err != nil {
 			panic(err)
 		}
-		c.vals = append(c.vals, d)
-	}
-	return c
+		// The length of the string might be one higher than the available precision
+		// (because of the decimal point), but that's ok.
+		maxPrec := uint32(len(strVal))
+		for p := uint32(1); p < maxPrec; p *= 2 {
+			var d Decimal
+
+			ctx := Context{
+				Precision:   p,
+				Rounding:    RoundHalfUp,
+				MaxExponent: MaxExponent,
+				MinExponent: MinExponent,
+			}
+			_, err := ctx.Round(&d, &c.unrounded)
+			if err != nil {
+				panic(err)
+			}
+			c.vals = append(c.vals, d)
+		}
+		return c
+	})
 }
 
 // get returns the given constant, rounded down to a precision at least as high
