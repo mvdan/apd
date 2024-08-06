@@ -99,6 +99,7 @@ func TestDigitsLookupTable(t *testing.T) {
 	// Make sure all elements in table make sense.
 	min := new(BigInt)
 	prevBorder := NewBigInt(0)
+	digitsLookupTableInit()
 	for i := 1; i <= digitsTableSize; i++ {
 		elem := &digitsLookupTable[i]
 

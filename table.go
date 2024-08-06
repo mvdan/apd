@@ -14,6 +14,8 @@
 
 package apd
 
+import "sync"
+
 // digitsLookupTable is used to map binary digit counts to their corresponding
 // decimal border values. The map relies on the proof that (without leading zeros)
 // for any given number of binary digits r, such that the number represented is
@@ -33,7 +35,7 @@ type tableVal struct {
 	nborder BigInt
 }
 
-func init() {
+var digitsLookupTableInit = sync.OnceFunc(func() {
 	curVal := NewBigInt(1)
 	curExp := new(BigInt)
 	for i := 1; i <= digitsTableSize; i++ {
@@ -49,9 +51,10 @@ func init() {
 		elem.border.Exp(&elem.border, curExp, nil)
 		elem.nborder.Neg(&elem.border)
 	}
-}
+})
 
 // NumDigits returns the number of decimal digits of d.Coeff.
+//
 //gcassert:inline
 func (d *Decimal) NumDigits() int64 {
 	return NumDigits(&d.Coeff)
@@ -65,6 +68,7 @@ func NumDigits(b *BigInt) int64 {
 	}
 
 	if bl <= digitsTableSize {
+		digitsLookupTableInit()
 		val := &digitsLookupTable[bl]
 		// In general, we either have val.digits or val.digits+1 digits and we have
 		// to compare with the border value. But that's not true for all values of
@@ -113,11 +117,11 @@ const powerTenTableSize = 128
 
 var pow10LookupTable [powerTenTableSize + 1]BigInt
 
-func init() {
+var pow10LookupTableInit = sync.OnceFunc(func() {
 	for i := int64(0); i <= powerTenTableSize; i++ {
 		setBigWithPow(&pow10LookupTable[i], i)
 	}
-}
+})
 
 func setBigWithPow(res *BigInt, pow int64) {
 	var tmp BigInt
@@ -130,6 +134,7 @@ func setBigWithPow(res *BigInt, pow int64) {
 // intermediate variable and must not be nil.
 func tableExp10(x int64, tmp *BigInt) *BigInt {
 	if x <= powerTenTableSize {
+		pow10LookupTableInit()
 		return &pow10LookupTable[x]
 	}
 	setBigWithPow(tmp, x)
