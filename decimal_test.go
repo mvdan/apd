@@ -491,6 +491,22 @@ func TestFormat(t *testing.T) {
 	}
 }
 
+// fmtAllowsPaddingAndMinusFlags is set to true if the %-0 flag combination is
+// allowed. This combination was not allowed before Go 1.23, but it is allowed
+// in Go 1.23 and later. See https://github.com/golang/go/issues/61784 for
+// details.
+var fmtAllowsPaddingAndMinusFlags bool
+
+// The following type definition, customer formatter implementation, and init
+// function are used to test for fmtAllowsPaddingAndMinusFlags.
+type fmtAllowsPaddingAndMinusFlagsHelper struct{}
+
+func (fmtAllowsPaddingAndMinusFlagsHelper) Format(s fmt.State, format rune) {
+	fmtAllowsPaddingAndMinusFlags = s.Flag('-') && s.Flag('0')
+}
+
+func init() { fmt.Printf("%-0s", fmtAllowsPaddingAndMinusFlagsHelper{}) }
+
 func TestFormatFlags(t *testing.T) {
 	const stdD = "1.23E+56"
 	tests := []struct {
@@ -531,7 +547,22 @@ func TestFormatFlags(t *testing.T) {
 		{
 			d:   stdD,
 			fmt: "%-010G",
-			out: "1.23E+56  ",
+			out: func() string {
+				if !fmtAllowsPaddingAndMinusFlags {
+					return "1.23E+56  "
+				}
+				return "001.23E+56"
+			}(),
+		},
+		{
+			d:   stdD,
+			fmt: "%0-10G",
+			out: func() string {
+				if !fmtAllowsPaddingAndMinusFlags {
+					return "1.23E+56  "
+				}
+				return "001.23E+56"
+			}(),
 		},
 		{
 			d:   "nan",
